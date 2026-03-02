@@ -22,8 +22,10 @@ python scripts/preflight_check.py
 
 ### 4) Run the bot
 ```bash
-python bot.py
+python scripts/run_bot.py
 ```
+
+> This launcher validates dependencies and required environment variables before starting `bot.py`.
 
 ## Validation commands
 
