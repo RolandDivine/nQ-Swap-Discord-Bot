@@ -646,10 +646,15 @@ class AlphaBot(commands.Bot):
         if not self.auto_alpha_loop.is_running():
             self.auto_alpha_loop.start()
 
+        if not check_price_alerts.is_running():
+            check_price_alerts.start()
+
     async def close(self):
         logger.info("Shutting down gracefully…")
         if self.auto_alpha_loop.is_running():
             self.auto_alpha_loop.cancel()
+        if check_price_alerts.is_running():
+            check_price_alerts.cancel()
         await api.close()
         await super().close()
 
@@ -1031,9 +1036,6 @@ async def check_price_alerts():
 @check_price_alerts.before_loop
 async def before_alert_checker():
     await bot.wait_until_ready()
-
-
-check_price_alerts.start()
 
 
 # ──────────────────────────────────────────────────────────────
