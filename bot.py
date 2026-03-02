@@ -46,16 +46,26 @@ from dotenv import load_dotenv
 # ──────────────────────────────────────────────────────────────
 load_dotenv()
 
-TOKEN        = os.getenv("DISCORD_TOKEN")
-CHANNEL_ID   = int(os.getenv("CHANNEL_ID",   "0"))
-GUILD_ID     = int(os.getenv("GUILD_ID",     "0"))
-ADMIN_ROLE   = os.getenv("ADMIN_ROLE_NAME",  "Admin")
-ALPHA_ROLE   = os.getenv("ALPHA_ROLE_NAME",  "Alpha")
-POST_INTERVAL_HOURS = int(os.getenv("POST_INTERVAL_HOURS", "6"))
-LOG_LEVEL    = os.getenv("LOG_LEVEL", "INFO").upper()
 
-if not TOKEN:
-    print("❌ DISCORD_TOKEN not set in .env — aborting.")
+def _clean_env(value: Optional[str]) -> str:
+    if value is None:
+        return ""
+    cleaned = value.strip()
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {'"', "'"}:
+        cleaned = cleaned[1:-1]
+    return cleaned.strip()
+
+
+TOKEN        = _clean_env(os.getenv("DISCORD_TOKEN"))
+CHANNEL_ID   = int(_clean_env(os.getenv("CHANNEL_ID", "0")) or "0")
+GUILD_ID     = int(_clean_env(os.getenv("GUILD_ID", "0")) or "0")
+ADMIN_ROLE   = _clean_env(os.getenv("ADMIN_ROLE_NAME", "Admin")) or "Admin"
+ALPHA_ROLE   = _clean_env(os.getenv("ALPHA_ROLE_NAME", "Alpha")) or "Alpha"
+POST_INTERVAL_HOURS = int(_clean_env(os.getenv("POST_INTERVAL_HOURS", "6")) or "6")
+LOG_LEVEL    = (_clean_env(os.getenv("LOG_LEVEL", "INFO")) or "INFO").upper()
+
+if not TOKEN or TOKEN in {"your_discord_bot_token_here", "DISCORD_TOKEN"}:
+    print("❌ DISCORD_TOKEN is missing/placeholder in .env — aborting.")
     sys.exit(1)
 
 # ──────────────────────────────────────────────────────────────
@@ -646,10 +656,15 @@ class AlphaBot(commands.Bot):
         if not self.auto_alpha_loop.is_running():
             self.auto_alpha_loop.start()
 
+        if not check_price_alerts.is_running():
+            check_price_alerts.start()
+
     async def close(self):
         logger.info("Shutting down gracefully…")
         if self.auto_alpha_loop.is_running():
             self.auto_alpha_loop.cancel()
+        if check_price_alerts.is_running():
+            check_price_alerts.cancel()
         await api.close()
         await super().close()
 
@@ -1031,9 +1046,6 @@ async def check_price_alerts():
 @check_price_alerts.before_loop
 async def before_alert_checker():
     await bot.wait_until_ready()
-
-
-check_price_alerts.start()
 
 
 # ──────────────────────────────────────────────────────────────
